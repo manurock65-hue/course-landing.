@@ -224,9 +224,29 @@ function initHero3D() {
   }
   const dotGeo = new THREE.BufferGeometry();
   dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(dotPositions, 3));
-  spin.add(new THREE.Points(dotGeo, new THREE.PointsMaterial({
-    size: 0.045, map: dotTexture(), color: INK, transparent: true, alphaTest: 0.5,
-  })));
+  // Each dot gets its own burst distance so the scroll explosion looks organic
+  const dotBase = Float32Array.from(dotPositions);
+  const dotBurst = Float32Array.from({ length: dotPositions.length / 3 }, () => 0.4 + Math.random() * 2.2);
+  const dotMat = new THREE.PointsMaterial({
+    size: 0.045, map: dotTexture(), color: INK, transparent: true, alphaTest: 0.05, depthWrite: false,
+  });
+  spin.add(new THREE.Points(dotGeo, dotMat));
+
+  // Background starfield (not part of the globe, so it isn't offset or scaled with it)
+  const starCount = small ? 500 : 1100;
+  const starPositions = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    starPositions[i * 3] = (Math.random() - 0.5) * 30;
+    starPositions[i * 3 + 1] = (Math.random() - 0.5) * 18;
+    starPositions[i * 3 + 2] = -Math.random() * 16;
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
+  const starMat = new THREE.PointsMaterial({
+    size: 0.05, map: dotTexture(), color: 0xe1e0cc, transparent: true, opacity: 0.55, depthWrite: false,
+  });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
 
   // Faint latitude / longitude grid
   const gridMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.08 });
@@ -245,11 +265,9 @@ function initHero3D() {
     spin.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
   }
 
-  // Soft orange rim glow
-  root.add(new THREE.Mesh(
-    new THREE.SphereGeometry(R * 1.12, 64, 64),
-    new THREE.ShaderMaterial({
-      uniforms: { glow: { value: new THREE.Color(ACCENT) } },
+  // Soft rim glow
+  const glowMat = new THREE.ShaderMaterial({
+      uniforms: { glow: { value: new THREE.Color(ACCENT) }, strength: { value: 0.55 } },
       vertexShader: `
         varying vec3 vNormal;
         varying vec3 vView;
@@ -261,16 +279,17 @@ function initHero3D() {
         }`,
       fragmentShader: `
         uniform vec3 glow;
+        uniform float strength;
         varying vec3 vNormal;
         varying vec3 vView;
         void main() {
           float f = pow(1.0 - abs(dot(vNormal, vView)), 3.0);
-          gl_FragColor = vec4(glow, f * 0.55);
+          gl_FragColor = vec4(glow, f * strength);
         }`,
       transparent: true,
       depthWrite: false,
-    })
-  ));
+  });
+  root.add(new THREE.Mesh(new THREE.SphereGeometry(R * 1.12, 64, 64), glowMat));
 
   // Orbit rings, each carrying a small satellite
   const rings = [
@@ -286,11 +305,11 @@ function initHero3D() {
     sat.position.x = def.radius;
     ring.add(sat);
     root.add(ring);
-    return { ring, speed: def.speed };
+    return { ring, speed: def.speed, opacity: def.opacity };
   });
 
   // Markers: pin + pulse ring in 3D, label badge in HTML
-  const pinMat = new THREE.MeshBasicMaterial({ color: ACCENT });
+  const pinMat = new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true });
   const markers = GLOBE_MARKERS.map((m, i) => {
     const p = latLonToVec(m.lat, m.lon, R * 1.01);
     const pin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), pinMat);
@@ -412,6 +431,7 @@ function initHero3D() {
   const normal = new THREE.Vector3();
   const toCam = new THREE.Vector3();
   let active = true;
+  let lastScatter = -1;
 
   gsap.ticker.add((time) => {
     if (!active) return;
@@ -431,6 +451,37 @@ function initHero3D() {
     world.position.x = state.offsetX * (1 - state.center);
     world.position.y = state.offsetY * (1 - state.center);
     root.scale.setScalar(Math.max(state.intro * state.size, 0.001));
+
+    // Scroll explosion: dots burst outward, core shrinks, details fade
+    const s = state.scatter;
+    if (s !== lastScatter) {
+      const arr = dotGeo.attributes.position.array;
+      for (let i = 0; i < dotBurst.length; i++) {
+        const k = 1 + s * s * dotBurst[i] * 2.2;
+        arr[i * 3] = dotBase[i * 3] * k;
+        arr[i * 3 + 1] = dotBase[i * 3 + 1] * k;
+        arr[i * 3 + 2] = dotBase[i * 3 + 2] * k;
+      }
+      dotGeo.attributes.position.needsUpdate = true;
+      core.scale.setScalar(Math.max(1 - s * 1.2, 0.001));
+      core.visible = s < 0.83;
+      const fade = Math.max(1 - s * 1.6, 0);
+      gridMat.opacity = 0.08 * fade;
+      arcMat.opacity = 0.55 * fade;
+      pinMat.opacity = fade;
+      glowMat.uniforms.strength.value = 0.55 * fade;
+      dotMat.opacity = 1 - s * 0.35;
+      rings.forEach((r) => {
+        r.ring.scale.setScalar(1 + s * 1.4);
+        r.ring.material.opacity = r.opacity * (1 - s);
+      });
+      lastScatter = s;
+    }
+
+    // Starfield drifts with the mouse and warps toward the camera on scroll
+    stars.rotation.z = time * 0.01;
+    stars.position.set(-state.mx * 0.8, state.my * 0.5, s * 12);
+    starMat.size = 0.05 + s * 0.06;
 
     rings.forEach(({ ring, speed }) => { ring.rotation.z = time * speed; });
 
@@ -619,10 +670,11 @@ if (animate) {
   if (hero3d) {
     const { camera, state } = hero3d;
     heroScroll
-      .fromTo(state, { scatter: 0, center: 0 }, { scatter: 1, center: 1, duration: 0.6 }, 0)
-      .fromTo(camera.position, { z: 9 }, { z: 6, duration: 1 }, 0)
-      .fromTo(state, { size: 1 }, { size: 3.4, duration: 0.6 }, 0.35)
-      .fromTo("#heroCanvas", { opacity: 1 }, { opacity: 0, duration: 0.25 }, 0.75);
+      // Globe glides to the centre and grows a little, then bursts into particles
+      .fromTo(state, { center: 0, size: 1 }, { center: 1, size: 1.35, duration: 0.45 }, 0)
+      .fromTo(state, { scatter: 0 }, { scatter: 1, duration: 0.6, ease: "power1.in" }, 0.3)
+      .fromTo(camera.position, { z: 9 }, { z: 7.5, duration: 1 }, 0)
+      .fromTo("#heroCanvas", { opacity: 1 }, { opacity: 0, duration: 0.15 }, 0.85);
 
     // Stop rendering once the hero is fully scrolled past
     ScrollTrigger.create({
