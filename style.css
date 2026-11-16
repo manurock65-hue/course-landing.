@@ -420,7 +420,7 @@ p { margin: 0; }
 
 .marquee--accent {
   background: var(--brand);
-  color: var(--accent);
+  color: #fff;
   padding: 22px 0;
   transform: rotate(-1.5deg);
   margin: 20px -20px;
