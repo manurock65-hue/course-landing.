@@ -128,6 +128,112 @@ const countObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 document.querySelectorAll("[data-count]").forEach((el) => countObserver.observe(el));
 
+// ---------- Hero 3D scene (Three.js) ----------
+function initHero3D() {
+  const canvas = document.getElementById("heroCanvas");
+  const small = window.innerWidth < 640;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  camera.position.z = 9;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const key = new THREE.DirectionalLight(0xffffff, 1.1);
+  key.position.set(3, 4, 5);
+  scene.add(key);
+  const rim = new THREE.PointLight(0x7b6bff, 2.5, 20);
+  rim.position.set(-4, -2, 3);
+  scene.add(rim);
+  const warm = new THREE.PointLight(0xffc44d, 1.6, 20);
+  warm.position.set(4, -3, 2);
+  scene.add(warm);
+
+  const world = new THREE.Group();
+  scene.add(world);
+
+  // Morphing blob: sphere whose vertices are pushed by layered sine waves
+  const segments = small ? 64 : 128;
+  const blobGeo = new THREE.SphereGeometry(1.5, segments, segments);
+  const basePos = blobGeo.attributes.position.array.slice();
+  const blob = new THREE.Mesh(blobGeo, new THREE.MeshPhysicalMaterial({
+    color: 0xff5b2e, roughness: 0.2, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.2,
+  }));
+  world.add(blob);
+
+  // Floating shapes around the blob
+  const shapeDefs = [
+    [new THREE.TorusGeometry(0.55, 0.2, 32, 96), { color: 0x111111, roughness: 0.3, metalness: 0.6 }, [-2.6, 1.4, -0.5]],
+    [new THREE.IcosahedronGeometry(0.45, 0), { color: 0x5b5bf7, roughness: 0.4, flatShading: true }, [2.4, 1.6, 0.4]],
+    [new THREE.BoxGeometry(0.6, 0.6, 0.6), { color: 0xffc44d, roughness: 0.3 }, [2.2, -1.6, 0.6]],
+    [new THREE.TorusKnotGeometry(0.32, 0.11, 128, 16), { color: 0xffffff, roughness: 0.15, metalness: 0.2 }, [-2.2, -1.5, 0.8]],
+    [new THREE.SphereGeometry(0.22, 32, 32), { color: 0x111111, roughness: 0.2 }, [0.6, 2.2, 1]],
+    [new THREE.OctahedronGeometry(0.3, 0), { color: 0xe9407a, roughness: 0.3, flatShading: true }, [-0.4, -2.3, 1.2]],
+  ];
+  const shapes = shapeDefs.map(([geo, mat, pos], i) => {
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(mat));
+    mesh.position.set(...pos);
+    mesh.userData = { base: new THREE.Vector3(...pos), phase: i * 1.3, spin: 0.2 + Math.random() * 0.4 };
+    world.add(mesh);
+    return mesh;
+  });
+
+  // Values driven by scroll (scatter, center) and mouse (tx/ty)
+  const state = { scatter: 0, center: 0, wobble: 0.18, offsetX: 0, mx: 0, my: 0, tx: 0, ty: 0 };
+  window.addEventListener("mousemove", (e) => {
+    state.tx = e.clientX / window.innerWidth - 0.5;
+    state.ty = e.clientY / window.innerHeight - 0.5;
+  });
+
+  function resize() {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    state.offsetX = w > 960 ? 1.8 : 0;
+    world.scale.setScalar(w > 640 ? 1 : 0.65);
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  const pos = blobGeo.attributes.position;
+  let active = true;
+  gsap.ticker.add((time) => {
+    if (!active) return;
+    for (let i = 0; i < pos.count; i++) {
+      const x = basePos[i * 3], y = basePos[i * 3 + 1], z = basePos[i * 3 + 2];
+      const n = Math.sin(x * 1.8 + time * 1.2) * Math.sin(y * 2.1 + time * 0.9) * Math.sin(z * 1.6 + time * 1.1);
+      const k = 1 + n * state.wobble;
+      pos.array[i * 3] = x * k;
+      pos.array[i * 3 + 1] = y * k;
+      pos.array[i * 3 + 2] = z * k;
+    }
+    pos.needsUpdate = true;
+    blobGeo.computeVertexNormals();
+    blob.rotation.set(time * 0.1, time * 0.15, 0);
+
+    state.mx += (state.tx - state.mx) * 0.05;
+    state.my += (state.ty - state.my) * 0.05;
+    world.rotation.y = state.mx * 0.6;
+    world.rotation.x = state.my * 0.4;
+    world.position.x = state.offsetX * (1 - state.center);
+
+    const spread = 1 + state.scatter * 2.5;
+    shapes.forEach((m) => {
+      const d = m.userData;
+      m.position.set(d.base.x * spread, d.base.y * spread + Math.sin(time + d.phase) * 0.15, d.base.z + state.scatter * 4);
+      m.rotation.x += d.spin * 0.01 * (1 + state.scatter * 4);
+      m.rotation.y += d.spin * 0.013 * (1 + state.scatter * 4);
+    });
+
+    renderer.render(scene, camera);
+  });
+
+  return { blob, shapes, camera, state, setActive: (v) => { active = v; } };
+}
+
 // ---------- GSAP animations ----------
 if (animate) {
   // Preloader, then hero intro
@@ -137,7 +243,12 @@ if (animate) {
   const counter = { v: 0 };
   if (lenis) lenis.stop();
 
-  gsap.timeline()
+  let hero3d = null;
+  if (typeof THREE !== "undefined") {
+    try { hero3d = initHero3D(); } catch (err) { console.warn("WebGL hero disabled:", err); }
+  }
+
+  const intro = gsap.timeline()
     .to(counter, {
       v: 100, duration: 1.6, ease: "power2.inOut",
       onUpdate: () => { countEl.textContent = Math.round(counter.v); },
@@ -145,20 +256,61 @@ if (animate) {
     .to(preloader, { yPercent: -100, duration: 1, ease: "expo.inOut" })
     .from(heroChars, { yPercent: 120, rotate: 8, duration: 1.1, stagger: 0.025, ease: "expo.out" }, "-=0.45")
     .from(".hero-fade", { y: 60, opacity: 0, duration: 1, stagger: 0.12, ease: "expo.out" }, "-=0.9")
-    .add(() => { preloader.remove(); if (lenis) lenis.start(); });
-
-  // Hero scroll-out: title drifts up, cards parallax at different speeds
-  gsap.to(".hero__title", {
-    yPercent: -30, opacity: 0.2, ease: "none",
-    scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: true },
-  });
-  document.querySelectorAll(".hero__card").forEach((card, i) => {
-    const speed = +card.dataset.speed;
-    gsap.to(card, {
-      y: -160 * speed, rotate: (i - 1) * 6 * speed, ease: "none",
-      scrollTrigger: { trigger: ".hero__visual", start: "top bottom", end: "bottom top", scrub: true },
+    .add(() => {
+      preloader.remove();
+      document.querySelector(".hero__title").classList.add("is-in");
+      if (lenis) lenis.start();
     });
+  if (hero3d) {
+    intro.from(hero3d.blob.scale, { x: 0, y: 0, z: 0, duration: 1.6, ease: "elastic.out(1, 0.5)" }, 2.4);
+    intro.from(hero3d.shapes.map((m) => m.scale), { x: 0, y: 0, z: 0, duration: 1.2, stagger: 0.08, ease: "back.out(2)" }, 2.6);
+  }
+
+  // Hero scroll: pinned while letters fly apart in 3D and the blob swallows the screen
+  const heroScroll = gsap.timeline({
+    defaults: { ease: "none", immediateRender: false },
+    scrollTrigger: { trigger: ".hero", start: "top top", end: "+=140%", scrub: 1, pin: true },
   });
+  heroScroll
+    .fromTo(heroChars,
+      { xPercent: 0, yPercent: 0, rotateX: 0, rotateY: 0, opacity: 1 },
+      {
+        xPercent: () => gsap.utils.random(-400, 400),
+        yPercent: () => gsap.utils.random(-500, 300),
+        rotateX: () => gsap.utils.random(-360, 360),
+        rotateY: () => gsap.utils.random(-360, 360),
+        transformPerspective: 600,
+        opacity: 0,
+        stagger: { each: 0.01, from: "random" },
+        duration: 0.6,
+      }, 0)
+    .fromTo(".hero__bottom, .hero__scroll", { y: 0, opacity: 1 }, { y: -80, opacity: 0, duration: 0.3 }, 0);
+  if (hero3d) {
+    const { blob, camera, state } = hero3d;
+    heroScroll
+      .fromTo(state, { scatter: 0, center: 0, wobble: 0.18 }, { scatter: 1, center: 1, wobble: 0.32, duration: 0.7 }, 0)
+      .fromTo(blob.rotation, { z: 0 }, { z: Math.PI, duration: 1 }, 0)
+      .fromTo(camera.position, { z: 9 }, { z: 6, duration: 1 }, 0)
+      .fromTo(blob.scale, { x: 1, y: 1, z: 1 }, { x: 4, y: 4, z: 4, duration: 0.6 }, 0.4);
+
+    // Stop rendering once the hero is fully scrolled past
+    ScrollTrigger.create({
+      trigger: ".hero", start: "top bottom",
+      endTrigger: ".why", end: "top top",
+      onToggle: (self) => hero3d.setActive(self.isActive),
+    });
+  }
+
+  // Hero title tilts toward the mouse
+  if (finePointer) {
+    const tiltX = gsap.quickTo(".hero__title", "rotateY", { duration: 0.8, ease: "power3" });
+    const tiltY = gsap.quickTo(".hero__title", "rotateX", { duration: 0.8, ease: "power3" });
+    gsap.set(".hero__title", { transformPerspective: 1200 });
+    window.addEventListener("mousemove", (e) => {
+      tiltX((e.clientX / window.innerWidth - 0.5) * 14);
+      tiltY((e.clientY / window.innerHeight - 0.5) * -10);
+    });
+  }
 
   // Section titles: chars rise in when they scroll into view
   document.querySelectorAll(".section__title[data-split]").forEach((title) => {

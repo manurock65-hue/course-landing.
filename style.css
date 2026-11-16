@@ -184,7 +184,46 @@ p { margin: 0; }
 .menu-toggle[aria-expanded="true"] span:last-child { transform: translateY(-3px) rotate(-45deg); }
 
 /* Hero */
-.hero { padding: 170px 0 80px; }
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 130px 0 90px;
+  overflow: hidden;
+}
+.hero > .container { position: relative; z-index: 1; }
+.hero__canvas {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+.hero__title.is-in .line { overflow: visible; }
+.hero__scroll {
+  position: absolute;
+  left: 50%; bottom: 28px;
+  z-index: 1;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  font-size: 12px; font-weight: 600;
+  letter-spacing: .2em; text-transform: uppercase;
+}
+.hero__scroll i {
+  width: 1.5px; height: 48px;
+  background: var(--line);
+  position: relative;
+  overflow: hidden;
+}
+.hero__scroll i::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: var(--ink);
+  animation: scrollHint 1.8s var(--ease) infinite;
+}
+@keyframes scrollHint {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(100%); }
+}
 .hero__title {
   font-size: clamp(56px, 11vw, 168px);
   font-weight: 700;
@@ -230,20 +269,6 @@ p { margin: 0; }
   from { transform: scale(.9); opacity: 1; }
   to { transform: scale(1.4); opacity: 0; }
 }
-
-.hero__visual {
-  position: relative;
-  height: 420px;
-  margin-top: 70px;
-}
-.hero__card {
-  position: absolute;
-  border-radius: var(--radius);
-  will-change: transform;
-}
-.hero__card--1 { inset: 0 40% 0 0; background: linear-gradient(135deg, #ff5b2e, #ffb84d); }
-.hero__card--2 { inset: 40px 18% 40px 52%; background: linear-gradient(135deg, #5b5bf7, #b8a9ff); }
-.hero__card--3 { inset: 0 0 80px 84%; background: var(--ink); }
 
 /* Marquee */
 .marquee { overflow: hidden; white-space: nowrap; }
@@ -691,8 +716,7 @@ p { margin: 0; }
 @media (max-width: 640px) {
   .container { width: calc(100% - 32px); }
   .section { padding: 90px 0; }
-  .hero { padding-top: 130px; }
-  .hero__visual { height: 260px; }
+  .hero { padding-top: 110px; }
   .process__grid, .footer__grid, .enroll__row { grid-template-columns: 1fr; }
   .work:nth-child(even) { margin-top: 0; }
   .js-gsap .preloader { padding: 24px; }
