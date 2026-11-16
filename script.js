@@ -8,6 +8,9 @@ const animate = hasGsap && !reduceMotion;
 if (animate) {
   document.documentElement.classList.add("js-gsap");
   gsap.registerPlugin(ScrollTrigger);
+  // Always start at the top so the scroll-driven hero isn't half-played on reload
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+  window.scrollTo(0, 0);
 }
 
 // ---------- Smooth scroll (Lenis) ----------
@@ -155,21 +158,21 @@ function initHero3D() {
 
   // Morphing blob: sphere whose vertices are pushed by layered sine waves
   const segments = small ? 64 : 128;
-  const blobGeo = new THREE.SphereGeometry(1.5, segments, segments);
+  const blobGeo = new THREE.SphereGeometry(1.3, segments, segments);
   const basePos = blobGeo.attributes.position.array.slice();
   const blob = new THREE.Mesh(blobGeo, new THREE.MeshPhysicalMaterial({
     color: 0xff5b2e, roughness: 0.2, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.2,
   }));
   world.add(blob);
 
-  // Floating shapes around the blob
+  // Floating shapes, kept close around the blob so they stay off the headline
   const shapeDefs = [
-    [new THREE.TorusGeometry(0.55, 0.2, 32, 96), { color: 0x111111, roughness: 0.3, metalness: 0.6 }, [-2.6, 1.4, -0.5]],
-    [new THREE.IcosahedronGeometry(0.45, 0), { color: 0x5b5bf7, roughness: 0.4, flatShading: true }, [2.4, 1.6, 0.4]],
-    [new THREE.BoxGeometry(0.6, 0.6, 0.6), { color: 0xffc44d, roughness: 0.3 }, [2.2, -1.6, 0.6]],
-    [new THREE.TorusKnotGeometry(0.32, 0.11, 128, 16), { color: 0xffffff, roughness: 0.15, metalness: 0.2 }, [-2.2, -1.5, 0.8]],
-    [new THREE.SphereGeometry(0.22, 32, 32), { color: 0x111111, roughness: 0.2 }, [0.6, 2.2, 1]],
-    [new THREE.OctahedronGeometry(0.3, 0), { color: 0xe9407a, roughness: 0.3, flatShading: true }, [-0.4, -2.3, 1.2]],
+    [new THREE.TorusGeometry(0.4, 0.15, 32, 96), { color: 0x111111, roughness: 0.3, metalness: 0.6 }, [-1.6, 1.5, -0.8]],
+    [new THREE.IcosahedronGeometry(0.38, 0), { color: 0x5b5bf7, roughness: 0.4, flatShading: true }, [1.5, 1.6, 0.2]],
+    [new THREE.BoxGeometry(0.5, 0.5, 0.5), { color: 0xffc44d, roughness: 0.3 }, [1.6, -1.5, 0.3]],
+    [new THREE.TorusKnotGeometry(0.26, 0.09, 128, 16), { color: 0xffffff, roughness: 0.15, metalness: 0.2 }, [-1.4, -1.6, 0.2]],
+    [new THREE.SphereGeometry(0.18, 32, 32), { color: 0x111111, roughness: 0.2 }, [0.2, 2.1, 0.4]],
+    [new THREE.OctahedronGeometry(0.26, 0), { color: 0xe9407a, roughness: 0.3, flatShading: true }, [-0.2, -2.1, 0.6]],
   ];
   const shapes = shapeDefs.map(([geo, mat, pos], i) => {
     const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(mat));
@@ -179,8 +182,11 @@ function initHero3D() {
     return mesh;
   });
 
-  // Values driven by scroll (scatter, center) and mouse (tx/ty)
-  const state = { scatter: 0, center: 0, wobble: 0.18, offsetX: 0, mx: 0, my: 0, tx: 0, ty: 0 };
+  // Values driven by the intro (intro, shapesIn), scroll (scatter, center, size, wobble) and mouse (tx/ty)
+  const state = {
+    intro: 0, shapesIn: 0, size: 1, scatter: 0, center: 0, wobble: 0.18,
+    offsetX: 0, mx: 0, my: 0, tx: 0, ty: 0,
+  };
   window.addEventListener("mousemove", (e) => {
     state.tx = e.clientX / window.innerWidth - 0.5;
     state.ty = e.clientY / window.innerHeight - 0.5;
@@ -192,7 +198,9 @@ function initHero3D() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    state.offsetX = w > 960 ? 1.8 : 0;
+    // Push the scene into the right-hand column on wide screens
+    const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z * camera.aspect;
+    state.offsetX = w > 960 ? halfWidth * 0.62 : 0;
     world.scale.setScalar(w > 640 ? 1 : 0.65);
   }
   resize();
@@ -213,6 +221,7 @@ function initHero3D() {
     pos.needsUpdate = true;
     blobGeo.computeVertexNormals();
     blob.rotation.set(time * 0.1, time * 0.15, 0);
+    blob.scale.setScalar(Math.max(state.intro * state.size, 0.001));
 
     state.mx += (state.tx - state.mx) * 0.05;
     state.my += (state.ty - state.my) * 0.05;
@@ -226,12 +235,102 @@ function initHero3D() {
       m.position.set(d.base.x * spread, d.base.y * spread + Math.sin(time + d.phase) * 0.15, d.base.z + state.scatter * 4);
       m.rotation.x += d.spin * 0.01 * (1 + state.scatter * 4);
       m.rotation.y += d.spin * 0.013 * (1 + state.scatter * 4);
+      m.scale.setScalar(Math.max(state.shapesIn, 0.001));
     });
 
     renderer.render(scene, camera);
   });
 
-  return { blob, shapes, camera, state, setActive: (v) => { active = v; } };
+  return { camera, state, setActive: (v) => { active = v; } };
+}
+
+// ---------- Hero hover: letters scatter away from the cursor, learning icons pop out ----------
+const HERO_ICONS = [
+  '<svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/><path d="M22 9v5"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M4 4h6a3 3 0 0 1 2 1 3 3 0 0 1 2-1h6v15h-6a2 2 0 0 0-2 2 2 2 0 0 0-2-2H4z"/><path d="M12 5v16"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M4 20l4-1L19 8l-3-3L5 16z"/><path d="M14 7l3 3"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M8 8l-4 4 4 4M16 8l4 4-4 4M14 5l-4 14"/></svg>',
+  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M12 3c4 2 6 6 5 11l-3 3h-4l-3-3c-1-5 1-9 5-11z"/><circle cx="12" cy="10" r="2"/><path d="M9 18l-2 3M15 18l2 3"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
+  '<svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4"/></svg>',
+];
+const HERO_ICON_COLORS = [
+  ["#ff5b2e", "#fff"], ["#111111", "#fff"], ["#5b5bf7", "#fff"],
+  ["#1fb57a", "#fff"], ["#e9407a", "#fff"], ["#ffc44d", "#111"],
+];
+
+function initHeroHover(chars) {
+  const hero = document.querySelector(".hero");
+  const layer = document.createElement("div");
+  layer.className = "hero__icons";
+  hero.appendChild(layer);
+
+  const movers = chars.map((el) => ({
+    el,
+    x: gsap.quickTo(el, "x", { duration: 0.7, ease: "power3" }),
+    y: gsap.quickTo(el, "y", { duration: 0.7, ease: "power3" }),
+    r: gsap.quickTo(el, "rotation", { duration: 0.7, ease: "power3" }),
+  }));
+  const radius = 220;
+  let enabled = false;
+  let scattered = false;
+  let lastSpawn = 0, lastX = 0, lastY = 0;
+
+  function reset() {
+    if (!scattered) return;
+    scattered = false;
+    movers.forEach((m) => { m.x(0); m.y(0); m.r(0); });
+  }
+
+  function spawnIcon(clientX, clientY) {
+    const box = hero.getBoundingClientRect();
+    const [bg, fg] = HERO_ICON_COLORS[Math.floor(Math.random() * HERO_ICON_COLORS.length)];
+    const el = document.createElement("span");
+    el.className = "hero-icon";
+    el.style.setProperty("--bg", bg);
+    el.style.setProperty("--fg", fg);
+    el.style.left = `${clientX - box.left}px`;
+    el.style.top = `${clientY - box.top}px`;
+    el.innerHTML = HERO_ICONS[Math.floor(Math.random() * HERO_ICONS.length)];
+    layer.appendChild(el);
+    gsap.timeline({ onComplete: () => el.remove() })
+      .fromTo(el, { scale: 0, rotation: gsap.utils.random(-120, 120) },
+        { scale: 1, rotation: gsap.utils.random(-25, 25), duration: 0.5, ease: "back.out(3)" })
+      .to(el, { x: gsap.utils.random(-140, 140), y: gsap.utils.random(-220, -80), duration: 1.5, ease: "power2.out" }, 0)
+      .to(el, { opacity: 0, scale: 0.5, duration: 0.45, ease: "power2.in" }, 1.05);
+  }
+
+  hero.addEventListener("mousemove", (e) => {
+    if (!enabled || window.scrollY > 10) return;
+    scattered = true;
+    movers.forEach((m) => {
+      const r = m.el.getBoundingClientRect();
+      const cx = r.left + r.width / 2 - gsap.getProperty(m.el, "x");
+      const cy = r.top + r.height / 2 - gsap.getProperty(m.el, "y");
+      const dx = cx - e.clientX;
+      const dy = cy - e.clientY;
+      const d = Math.hypot(dx, dy) || 1;
+      const force = Math.max(0, 1 - d / radius) ** 1.5;
+      m.x((dx / d) * force * 160);
+      m.y((dy / d) * force * 160);
+      m.r(force * (dx > 0 ? 35 : -35));
+    });
+
+    const now = performance.now();
+    if (now - lastSpawn > 80 && Math.hypot(e.clientX - lastX, e.clientY - lastY) > 40) {
+      spawnIcon(e.clientX, e.clientY);
+      lastSpawn = now;
+      lastX = e.clientX;
+      lastY = e.clientY;
+    }
+  });
+  hero.addEventListener("mouseleave", reset);
+  window.addEventListener("scroll", () => { if (window.scrollY > 10) reset(); }, { passive: true });
+
+  return { enable: () => { enabled = true; } };
 }
 
 // ---------- GSAP animations ----------
@@ -247,6 +346,7 @@ if (animate) {
   if (typeof THREE !== "undefined") {
     try { hero3d = initHero3D(); } catch (err) { console.warn("WebGL hero disabled:", err); }
   }
+  const heroHover = finePointer ? initHeroHover(heroChars) : null;
 
   const intro = gsap.timeline()
     .to(counter, {
@@ -259,11 +359,12 @@ if (animate) {
     .add(() => {
       preloader.remove();
       document.querySelector(".hero__title").classList.add("is-in");
+      if (heroHover) heroHover.enable();
       if (lenis) lenis.start();
     });
   if (hero3d) {
-    intro.from(hero3d.blob.scale, { x: 0, y: 0, z: 0, duration: 1.6, ease: "elastic.out(1, 0.5)" }, 2.4);
-    intro.from(hero3d.shapes.map((m) => m.scale), { x: 0, y: 0, z: 0, duration: 1.2, stagger: 0.08, ease: "back.out(2)" }, 2.6);
+    intro.to(hero3d.state, { intro: 1, duration: 1.6, ease: "elastic.out(1, 0.5)" }, 2.4);
+    intro.to(hero3d.state, { shapesIn: 1, duration: 1.2, ease: "back.out(2)" }, 2.6);
   }
 
   // Hero scroll: pinned while letters fly apart in 3D and the blob swallows the screen
@@ -286,12 +387,11 @@ if (animate) {
       }, 0)
     .fromTo(".hero__bottom, .hero__scroll", { y: 0, opacity: 1 }, { y: -80, opacity: 0, duration: 0.3 }, 0);
   if (hero3d) {
-    const { blob, camera, state } = hero3d;
+    const { camera, state } = hero3d;
     heroScroll
       .fromTo(state, { scatter: 0, center: 0, wobble: 0.18 }, { scatter: 1, center: 1, wobble: 0.32, duration: 0.7 }, 0)
-      .fromTo(blob.rotation, { z: 0 }, { z: Math.PI, duration: 1 }, 0)
       .fromTo(camera.position, { z: 9 }, { z: 6, duration: 1 }, 0)
-      .fromTo(blob.scale, { x: 1, y: 1, z: 1 }, { x: 4, y: 4, z: 4, duration: 0.6 }, 0.4);
+      .fromTo(state, { size: 1 }, { size: 4.5, duration: 0.6 }, 0.4);
 
     // Stop rendering once the hero is fully scrolled past
     ScrollTrigger.create({
@@ -307,8 +407,8 @@ if (animate) {
     const tiltY = gsap.quickTo(".hero__title", "rotateX", { duration: 0.8, ease: "power3" });
     gsap.set(".hero__title", { transformPerspective: 1200 });
     window.addEventListener("mousemove", (e) => {
-      tiltX((e.clientX / window.innerWidth - 0.5) * 14);
-      tiltY((e.clientY / window.innerHeight - 0.5) * -10);
+      tiltX((e.clientX / window.innerWidth - 0.5) * 8);
+      tiltY((e.clientY / window.innerHeight - 0.5) * -6);
     });
   }
 
