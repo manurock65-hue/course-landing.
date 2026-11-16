@@ -171,9 +171,10 @@ function initHero3D() {
   const markerLayer = document.getElementById("heroMarkers");
   const cursorRing = document.querySelector(".cursor-ring");
   const small = window.innerWidth < 640;
-  const ACCENT = 0x01565b;
-  const LIME = 0xcbeb3a;
-  const INK = 0x181818;
+  // Colours for a globe sitting on the dark hero card
+  const ACCENT = 0xcbeb3a;
+  const LIME = 0xe1e0cc;
+  const INK = 0xe1e0cc;
   const R = 1.6;
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
@@ -200,7 +201,7 @@ function initHero3D() {
   // Solid core hides the dots on the far side
   const core = new THREE.Mesh(
     new THREE.SphereGeometry(R * 0.985, 64, 64),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 })
+    new THREE.MeshStandardMaterial({ color: 0x0b3a3d, roughness: 0.9 })
   );
   spin.add(core);
 
@@ -330,7 +331,7 @@ function initHero3D() {
   // Values driven by the intro (intro, markersIn), scroll (scatter, center, size) and mouse (tx/ty)
   const state = {
     intro: 0, markersIn: 0, size: 1, scatter: 0, center: 0,
-    offsetX: 0, mx: 0, my: 0, tx: 0, ty: 0,
+    offsetX: 0, offsetY: 0, mx: 0, my: 0, tx: 0, ty: 0,
   };
   window.addEventListener("mousemove", (e) => {
     state.tx = e.clientX / window.innerWidth - 0.5;
@@ -345,7 +346,9 @@ function initHero3D() {
     camera.updateProjectionMatrix();
     // Push the globe into the right-hand column on wide screens
     const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 9 * camera.aspect;
-    state.offsetX = w > 960 ? halfWidth * 0.58 : 0;
+    // Upper-right of the card on wide screens (headline sits bottom-left), top-centre on narrow ones
+    state.offsetX = w > 960 ? halfWidth * 0.5 : 0;
+    state.offsetY = w > 960 ? 0.55 : 1.3;
     world.scale.setScalar(w > 640 ? 1 : 0.75);
   }
   resize();
@@ -426,6 +429,7 @@ function initHero3D() {
     world.rotation.y = state.mx * 0.25;
     world.rotation.x = state.my * 0.15;
     world.position.x = state.offsetX * (1 - state.center);
+    world.position.y = state.offsetY * (1 - state.center);
     root.scale.setScalar(Math.max(state.intro * state.size, 0.001));
 
     rings.forEach(({ ring, speed }) => { ring.rotation.z = time * speed; });
@@ -578,7 +582,8 @@ if (animate) {
       onUpdate: () => { countEl.textContent = Math.round(counter.v); },
     })
     .to(preloader, { yPercent: -100, duration: 1, ease: "expo.inOut" })
-    .from(heroChars, { yPercent: 120, rotate: 8, duration: 1.1, stagger: 0.025, ease: "expo.out" }, "-=0.45")
+    // Words pull up one after another
+    .from(".hero__title .word", { y: 40, opacity: 0, duration: 0.8, stagger: 0.08, ease: "expo.out" }, "-=0.45")
     .from(".hero-fade", { y: 60, opacity: 0, duration: 1, stagger: 0.12, ease: "expo.out" }, "-=0.9")
     .add(() => {
       preloader.remove();
@@ -609,7 +614,8 @@ if (animate) {
         stagger: { each: 0.01, from: "random" },
         duration: 0.6,
       }, 0)
-    .fromTo(".hero__bottom, .hero__scroll", { y: 0, opacity: 1 }, { y: -80, opacity: 0, duration: 0.3 }, 0);
+    .fromTo(".hero__side", { y: 0, opacity: 1 }, { y: -80, opacity: 0, duration: 0.3 }, 0)
+    .fromTo(".hero__frame", { scale: 1, borderRadius: 32 }, { scale: 0.94, borderRadius: 56, duration: 1 }, 0);
   if (hero3d) {
     const { camera, state } = hero3d;
     heroScroll

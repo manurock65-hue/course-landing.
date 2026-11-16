@@ -23,7 +23,7 @@
 
   <!-- Header -->
   <header class="header" id="top">
-    <div class="container header__inner">
+    <div class="header__inner">
       <a href="#top" class="logo">learn<span>lab</span></a>
       <nav class="nav" id="nav">
         <a href="#about">About</a>
@@ -41,27 +41,36 @@
 
   <!-- Hero -->
   <section class="hero">
-    <canvas class="hero__canvas" id="heroCanvas" aria-hidden="true"></canvas>
-    <div class="hero__markers" id="heroMarkers" aria-hidden="true"></div>
-    <div class="container">
-      <h1 class="hero__title" data-split>
-        <span class="line">Learn skills</span>
-        <span class="line">that <em>actually</em></span>
-        <span class="line">ship.</span>
-      </h1>
-      <div class="hero__bottom">
-        <p class="hero__sub hero-fade">Pick a plan, join the cohort, and your learning journey starts tomorrow. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-        <div class="hero__actions hero-fade">
-          <a href="#pricing" class="btn btn--accent magnetic">See Plans</a>
-          <a href="#pricing" class="btn btn--outline magnetic">Free Preview</a>
-          <button class="play magnetic" id="playBtn" aria-label="Play video">
-            <span class="play__icon">&#9654;</span>
-            <span>Play trailer</span>
-          </button>
+    <div class="hero__frame">
+      <canvas class="hero__canvas" id="heroCanvas" aria-hidden="true"></canvas>
+      <div class="hero__shade" aria-hidden="true"></div>
+      <div class="hero__noise" aria-hidden="true"></div>
+      <div class="hero__markers" id="heroMarkers" aria-hidden="true"></div>
+
+      <div class="hero__content">
+        <h1 class="hero__title" data-split>
+          <span class="line">Learn skills</span>
+          <span class="line">that <em>actually</em></span>
+          <span class="line">ship.<sup class="hero__star">*</sup></span>
+        </h1>
+        <div class="hero__side hero-fade">
+          <p class="hero__sub">Pick a plan, join the cohort, and your learning journey starts tomorrow. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+          <div class="hero__actions">
+            <a href="#pricing" class="btn-pill magnetic">
+              See Plans
+              <span class="btn-pill__icon">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </span>
+            </a>
+            <a href="#pricing" class="btn btn--ghost magnetic">Free Preview</a>
+            <button class="play magnetic" id="playBtn" aria-label="Play video">
+              <span class="play__icon">&#9654;</span>
+              <span>Play trailer</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
-    <div class="hero__scroll hero-fade"><span>Scroll</span><i></i></div>
   </section>
 
   <!-- Marquee -->
