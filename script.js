@@ -171,8 +171,9 @@ function initHero3D() {
   const markerLayer = document.getElementById("heroMarkers");
   const cursorRing = document.querySelector(".cursor-ring");
   const small = window.innerWidth < 640;
-  const ACCENT = 0xff5b2e;
-  const INK = 0x111111;
+  const ACCENT = 0x01565b;
+  const LIME = 0xcbeb3a;
+  const INK = 0x181818;
   const R = 1.6;
 
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
@@ -272,8 +273,8 @@ function initHero3D() {
 
   // Orbit rings, each carrying a small satellite
   const rings = [
-    { radius: R * 1.32, color: ACCENT, opacity: 0.9, rot: [1.15, 0.35, 0], speed: 0.35 },
-    { radius: R * 1.5, color: INK, opacity: 0.25, rot: [1.9, -0.5, 0], speed: -0.22 },
+    { radius: R * 1.32, color: LIME, opacity: 1, rot: [1.15, 0.35, 0], speed: 0.35 },
+    { radius: R * 1.5, color: ACCENT, opacity: 0.3, rot: [1.9, -0.5, 0], speed: -0.22 },
   ].map((def) => {
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(def.radius, 0.006, 8, 200),
@@ -479,8 +480,8 @@ const HERO_ICONS = [
   '<svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4"/></svg>',
 ];
 const HERO_ICON_COLORS = [
-  ["#ff5b2e", "#fff"], ["#111111", "#fff"], ["#5b5bf7", "#fff"],
-  ["#1fb57a", "#fff"], ["#e9407a", "#fff"], ["#ffc44d", "#111"],
+  ["#01565b", "#cbeb3a"], ["#cbeb3a", "#01565b"], ["#181818", "#cbeb3a"],
+  ["#013f43", "#ffffff"], ["#a7d8d0", "#013f43"], ["#ffffff", "#01565b"],
 ];
 
 function initHeroHover(chars, isBusy) {
