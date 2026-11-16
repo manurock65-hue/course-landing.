@@ -192,11 +192,48 @@ p { margin: 0; }
   padding: 130px 0 90px;
   overflow: hidden;
 }
-.hero > .container { position: relative; z-index: 1; }
+.hero > .container { position: relative; z-index: 2; }
 .hero__canvas {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   pointer-events: none;
+}
+.hero.is-over-globe { cursor: grab; }
+.hero.is-dragging { cursor: grabbing; user-select: none; }
+
+/* Labels pinned to the globe */
+.hero__markers {
+  position: absolute; inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+.globe-tag {
+  position: absolute; top: 0; left: 0;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .3);
+  font: 600 14px "Inter", sans-serif;
+  white-space: nowrap;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.globe-tag__icon {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--fg);
+}
+.globe-tag__icon svg {
+  width: 17px; height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .hero__title.is-in .line { overflow: visible; }
 
@@ -742,7 +779,7 @@ p { margin: 0; }
   .container { width: calc(100% - 32px); }
   .section { padding: 90px 0; }
   .hero { padding-top: 110px; }
-  .hero__canvas { opacity: .45; }
+  .hero__canvas, .hero__markers { opacity: .45; }
   .process__grid, .footer__grid, .enroll__row { grid-template-columns: 1fr; }
   .work:nth-child(even) { margin-top: 0; }
   .js-gsap .preloader { padding: 24px; }

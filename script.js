@@ -131,60 +131,204 @@ const countObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 document.querySelectorAll("[data-count]").forEach((el) => countObserver.observe(el));
 
-// ---------- Hero 3D scene (Three.js) ----------
+// ---------- Hero 3D globe (Three.js) ----------
+const GLOBE_MARKERS = [
+  { lat: 40, lon: -74, label: "Design", icon: 3 },
+  { lat: 51, lon: 0, label: "Courses", icon: 1 },
+  { lat: 28, lon: 77, label: "Code", icon: 4 },
+  { lat: 35, lon: 139, label: "Ideas", icon: 2 },
+  { lat: -33, lon: 151, label: "Certificate", icon: 0 },
+  { lat: -23, lon: -46, label: "Live Classes", icon: 5 },
+  { lat: 1, lon: 103, label: "Launch", icon: 6 },
+  { lat: 6, lon: 3, label: "Top Rated", icon: 7 },
+];
+const GLOBE_ARCS = [[0, 1], [1, 2], [2, 3], [3, 6], [6, 4], [5, 0], [7, 1], [7, 5], [2, 6]];
+
+function latLonToVec(lat, lon, r) {
+  const phi = THREE.MathUtils.degToRad(90 - lat);
+  const theta = THREE.MathUtils.degToRad(lon + 180);
+  return new THREE.Vector3(
+    -r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function dotTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 64;
+  const g = c.getContext("2d");
+  g.beginPath();
+  g.arc(32, 32, 28, 0, Math.PI * 2);
+  g.fillStyle = "#fff";
+  g.fill();
+  return new THREE.CanvasTexture(c);
+}
+
 function initHero3D() {
+  const hero = document.querySelector(".hero");
   const canvas = document.getElementById("heroCanvas");
+  const markerLayer = document.getElementById("heroMarkers");
+  const cursorRing = document.querySelector(".cursor-ring");
   const small = window.innerWidth < 640;
+  const ACCENT = 0xff5b2e;
+  const INK = 0x111111;
+  const R = 1.6;
+
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
   camera.position.z = 9;
-
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-  const key = new THREE.DirectionalLight(0xffffff, 1.1);
-  key.position.set(3, 4, 5);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+  const key = new THREE.DirectionalLight(0xffffff, 0.5);
+  key.position.set(-3, 4, 5);
   scene.add(key);
-  const rim = new THREE.PointLight(0x7b6bff, 2.5, 20);
-  rim.position.set(-4, -2, 3);
-  scene.add(rim);
-  const warm = new THREE.PointLight(0xffc44d, 1.6, 20);
-  warm.position.set(4, -3, 2);
-  scene.add(warm);
 
+  // world (mouse parallax + column offset) > root (scale) > tilt (drag X) > spin (drag/auto Y)
   const world = new THREE.Group();
+  const root = new THREE.Group();
+  const tilt = new THREE.Group();
+  const spin = new THREE.Group();
   scene.add(world);
+  world.add(root);
+  root.add(tilt);
+  tilt.add(spin);
+  tilt.rotation.x = 0.35;
 
-  // Morphing blob: sphere whose vertices are pushed by layered sine waves
-  const segments = small ? 64 : 128;
-  const blobGeo = new THREE.SphereGeometry(1.3, segments, segments);
-  const basePos = blobGeo.attributes.position.array.slice();
-  const blob = new THREE.Mesh(blobGeo, new THREE.MeshPhysicalMaterial({
-    color: 0xff5b2e, roughness: 0.2, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.2,
-  }));
-  world.add(blob);
+  // Solid core hides the dots on the far side
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(R * 0.985, 64, 64),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 })
+  );
+  spin.add(core);
 
-  // Floating shapes, kept close around the blob so they stay off the headline
-  const shapeDefs = [
-    [new THREE.TorusGeometry(0.4, 0.15, 32, 96), { color: 0x111111, roughness: 0.3, metalness: 0.6 }, [-1.6, 1.5, -0.8]],
-    [new THREE.IcosahedronGeometry(0.38, 0), { color: 0x5b5bf7, roughness: 0.4, flatShading: true }, [1.5, 1.6, 0.2]],
-    [new THREE.BoxGeometry(0.5, 0.5, 0.5), { color: 0xffc44d, roughness: 0.3 }, [1.6, -1.5, 0.3]],
-    [new THREE.TorusKnotGeometry(0.26, 0.09, 128, 16), { color: 0xffffff, roughness: 0.15, metalness: 0.2 }, [-1.4, -1.6, 0.2]],
-    [new THREE.SphereGeometry(0.18, 32, 32), { color: 0x111111, roughness: 0.2 }, [0.2, 2.1, 0.4]],
-    [new THREE.OctahedronGeometry(0.26, 0), { color: 0xe9407a, roughness: 0.3, flatShading: true }, [-0.2, -2.1, 0.6]],
-  ];
-  const shapes = shapeDefs.map(([geo, mat, pos], i) => {
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial(mat));
-    mesh.position.set(...pos);
-    mesh.userData = { base: new THREE.Vector3(...pos), phase: i * 1.3, spin: 0.2 + Math.random() * 0.4 };
-    world.add(mesh);
-    return mesh;
+  // Dotted "continents": Fibonacci-sphere points filtered by a smooth pseudo-noise
+  const total = small ? 5000 : 9000;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const dotPositions = [];
+  for (let i = 0; i < total; i++) {
+    const y = 1 - (i / (total - 1)) * 2;
+    const r = Math.sqrt(1 - y * y);
+    const a = i * golden;
+    const x = Math.cos(a) * r;
+    const z = Math.sin(a) * r;
+    const lat = Math.asin(y);
+    const lon = Math.atan2(z, x);
+    const land = Math.sin(lon * 1.5 + 0.5) * Math.cos(lat * 2)
+      + 0.5 * Math.sin(lon * 3.1 - lat * 2.7 + 1.3)
+      + 0.3 * Math.cos(lon * 6.3 + lat * 5.1);
+    if (land > 0.2 && Math.abs(lat) < 1.35) dotPositions.push(x * R, y * R, z * R);
+  }
+  const dotGeo = new THREE.BufferGeometry();
+  dotGeo.setAttribute("position", new THREE.Float32BufferAttribute(dotPositions, 3));
+  spin.add(new THREE.Points(dotGeo, new THREE.PointsMaterial({
+    size: 0.045, map: dotTexture(), color: INK, transparent: true, alphaTest: 0.5,
+  })));
+
+  // Faint latitude / longitude grid
+  const gridMat = new THREE.LineBasicMaterial({ color: INK, transparent: true, opacity: 0.08 });
+  for (let lat = -60; lat <= 60; lat += 30) {
+    const pts = [];
+    for (let lon = 0; lon < 360; lon += 6) pts.push(latLonToVec(lat, lon, R * 1.002));
+    spin.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+  }
+  for (let lon = 0; lon < 180; lon += 30) {
+    const pts = [];
+    const l = THREE.MathUtils.degToRad(lon);
+    for (let d = 0; d < 360; d += 6) {
+      const t = THREE.MathUtils.degToRad(d);
+      pts.push(new THREE.Vector3(Math.cos(t) * Math.cos(l), Math.sin(t), Math.cos(t) * Math.sin(l)).multiplyScalar(R * 1.002));
+    }
+    spin.add(new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
+  }
+
+  // Soft orange rim glow
+  root.add(new THREE.Mesh(
+    new THREE.SphereGeometry(R * 1.12, 64, 64),
+    new THREE.ShaderMaterial({
+      uniforms: { glow: { value: new THREE.Color(ACCENT) } },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec4 mv = modelViewMatrix * vec4(position, 1.0);
+          vView = normalize(-mv.xyz);
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: `
+        uniform vec3 glow;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          float f = pow(1.0 - abs(dot(vNormal, vView)), 3.0);
+          gl_FragColor = vec4(glow, f * 0.55);
+        }`,
+      transparent: true,
+      depthWrite: false,
+    })
+  ));
+
+  // Orbit rings, each carrying a small satellite
+  const rings = [
+    { radius: R * 1.32, color: ACCENT, opacity: 0.9, rot: [1.15, 0.35, 0], speed: 0.35 },
+    { radius: R * 1.5, color: INK, opacity: 0.25, rot: [1.9, -0.5, 0], speed: -0.22 },
+  ].map((def) => {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(def.radius, 0.006, 8, 200),
+      new THREE.MeshBasicMaterial({ color: def.color, transparent: true, opacity: def.opacity })
+    );
+    ring.rotation.set(...def.rot);
+    const sat = new THREE.Mesh(new THREE.SphereGeometry(0.06, 16, 16), new THREE.MeshStandardMaterial({ color: def.color }));
+    sat.position.x = def.radius;
+    ring.add(sat);
+    root.add(ring);
+    return { ring, speed: def.speed };
   });
 
-  // Values driven by the intro (intro, shapesIn), scroll (scatter, center, size, wobble) and mouse (tx/ty)
+  // Markers: pin + pulse ring in 3D, label badge in HTML
+  const pinMat = new THREE.MeshBasicMaterial({ color: ACCENT });
+  const markers = GLOBE_MARKERS.map((m, i) => {
+    const p = latLonToVec(m.lat, m.lon, R * 1.01);
+    const pin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 16, 16), pinMat);
+    pin.position.copy(p);
+    const pulse = new THREE.Mesh(
+      new THREE.RingGeometry(0.05, 0.068, 32),
+      new THREE.MeshBasicMaterial({ color: ACCENT, transparent: true, side: THREE.DoubleSide })
+    );
+    pulse.position.copy(p);
+    pulse.lookAt(p.clone().multiplyScalar(2));
+    spin.add(pin, pulse);
+
+    const [bg, fg] = HERO_ICON_COLORS[i % HERO_ICON_COLORS.length];
+    const tag = document.createElement("div");
+    tag.className = "globe-tag";
+    tag.style.setProperty("--bg", bg);
+    tag.style.setProperty("--fg", fg);
+    tag.innerHTML = `<span class="globe-tag__icon">${HERO_ICONS[m.icon]}</span><span>${m.label}</span>`;
+    markerLayer.appendChild(tag);
+    return { pin, pulse, tag, phase: i * 0.37 };
+  });
+
+  // Arcs between markers with a pulse travelling along each
+  const arcMat = new THREE.LineBasicMaterial({ color: ACCENT, transparent: true, opacity: 0.55 });
+  const travelerGeo = new THREE.SphereGeometry(0.028, 12, 12);
+  const arcs = GLOBE_ARCS.map(([a, b], i) => {
+    const va = latLonToVec(GLOBE_MARKERS[a].lat, GLOBE_MARKERS[a].lon, R * 1.01);
+    const vb = latLonToVec(GLOBE_MARKERS[b].lat, GLOBE_MARKERS[b].lon, R * 1.01);
+    const lift = 1 + va.distanceTo(vb) * 0.28;
+    const mid = va.clone().add(vb).normalize().multiplyScalar(R * lift);
+    const curve = new THREE.QuadraticBezierCurve3(va, mid, vb);
+    spin.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(curve.getPoints(64)), arcMat));
+    const traveler = new THREE.Mesh(travelerGeo, pinMat);
+    spin.add(traveler);
+    return { curve, traveler, offset: i * 0.19 };
+  });
+
+  // Values driven by the intro (intro, markersIn), scroll (scatter, center, size) and mouse (tx/ty)
   const state = {
-    intro: 0, shapesIn: 0, size: 1, scatter: 0, center: 0, wobble: 0.18,
+    intro: 0, markersIn: 0, size: 1, scatter: 0, center: 0,
     offsetX: 0, mx: 0, my: 0, tx: 0, ty: 0,
   };
   window.addEventListener("mousemove", (e) => {
@@ -198,50 +342,127 @@ function initHero3D() {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    // Push the scene into the right-hand column on wide screens
-    const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.position.z * camera.aspect;
-    state.offsetX = w > 960 ? halfWidth * 0.62 : 0;
-    world.scale.setScalar(w > 640 ? 1 : 0.65);
+    // Push the globe into the right-hand column on wide screens
+    const halfWidth = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * 9 * camera.aspect;
+    state.offsetX = w > 960 ? halfWidth * 0.58 : 0;
+    world.scale.setScalar(w > 640 ? 1 : 0.75);
   }
   resize();
   window.addEventListener("resize", resize);
 
-  const pos = blobGeo.attributes.position;
+  // Drag to rotate (with momentum); only starts when the press lands on the globe
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+  let dragging = false;
+  let overGlobe = false;
+  let lastX = 0, lastY = 0, velY = 0, velX = 0;
+
+  function hitsGlobe(e) {
+    const rect = canvas.getBoundingClientRect();
+    pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    raycaster.setFromCamera(pointer, camera);
+    return raycaster.intersectObject(core).length > 0;
+  }
+  function setOverGlobe(v) {
+    if (v === overGlobe) return;
+    overGlobe = v;
+    hero.classList.toggle("is-over-globe", v);
+    if (cursorRing) {
+      cursorRing.classList.toggle("is-view", v);
+      cursorRing.querySelector("span").textContent = v ? "Drag" : "View";
+    }
+  }
+
+  hero.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("a, button") || window.scrollY > 10 || !hitsGlobe(e)) return;
+    e.preventDefault();
+    dragging = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    velX = velY = 0;
+    hero.classList.add("is-dragging");
+    hero.setPointerCapture(e.pointerId);
+  });
+  hero.addEventListener("pointermove", (e) => {
+    if (dragging) {
+      velY = (e.clientX - lastX) * 0.006;
+      velX = (e.clientY - lastY) * 0.006;
+      spin.rotation.y += velY;
+      tilt.rotation.x = THREE.MathUtils.clamp(tilt.rotation.x + velX, -0.9, 0.9);
+      lastX = e.clientX;
+      lastY = e.clientY;
+    } else if (e.pointerType === "mouse") {
+      setOverGlobe(window.scrollY < 10 && hitsGlobe(e));
+    }
+  });
+  const endDrag = () => {
+    dragging = false;
+    hero.classList.remove("is-dragging");
+  };
+  hero.addEventListener("pointerup", endDrag);
+  hero.addEventListener("pointercancel", endDrag);
+  hero.addEventListener("pointerleave", () => setOverGlobe(false));
+
+  const tmp = new THREE.Vector3();
+  const center = new THREE.Vector3();
+  const normal = new THREE.Vector3();
+  const toCam = new THREE.Vector3();
   let active = true;
+
   gsap.ticker.add((time) => {
     if (!active) return;
-    for (let i = 0; i < pos.count; i++) {
-      const x = basePos[i * 3], y = basePos[i * 3 + 1], z = basePos[i * 3 + 2];
-      const n = Math.sin(x * 1.8 + time * 1.2) * Math.sin(y * 2.1 + time * 0.9) * Math.sin(z * 1.6 + time * 1.1);
-      const k = 1 + n * state.wobble;
-      pos.array[i * 3] = x * k;
-      pos.array[i * 3 + 1] = y * k;
-      pos.array[i * 3 + 2] = z * k;
+
+    // Spin: auto-rotate plus momentum from the last drag
+    if (!dragging) {
+      spin.rotation.y += 0.0025 * (1 + state.scatter * 10) + velY;
+      tilt.rotation.x = THREE.MathUtils.clamp(tilt.rotation.x + velX, -0.9, 0.9);
+      velY *= 0.95;
+      velX *= 0.9;
     }
-    pos.needsUpdate = true;
-    blobGeo.computeVertexNormals();
-    blob.rotation.set(time * 0.1, time * 0.15, 0);
-    blob.scale.setScalar(Math.max(state.intro * state.size, 0.001));
 
     state.mx += (state.tx - state.mx) * 0.05;
     state.my += (state.ty - state.my) * 0.05;
-    world.rotation.y = state.mx * 0.6;
-    world.rotation.x = state.my * 0.4;
+    world.rotation.y = state.mx * 0.25;
+    world.rotation.x = state.my * 0.15;
     world.position.x = state.offsetX * (1 - state.center);
+    root.scale.setScalar(Math.max(state.intro * state.size, 0.001));
 
-    const spread = 1 + state.scatter * 2.5;
-    shapes.forEach((m) => {
-      const d = m.userData;
-      m.position.set(d.base.x * spread, d.base.y * spread + Math.sin(time + d.phase) * 0.15, d.base.z + state.scatter * 4);
-      m.rotation.x += d.spin * 0.01 * (1 + state.scatter * 4);
-      m.rotation.y += d.spin * 0.013 * (1 + state.scatter * 4);
-      m.scale.setScalar(Math.max(state.shapesIn, 0.001));
+    rings.forEach(({ ring, speed }) => { ring.rotation.z = time * speed; });
+
+    arcs.forEach(({ curve, traveler, offset }) => {
+      curve.getPoint((time * 0.25 + offset) % 1, traveler.position);
+    });
+
+    // Project each marker to screen; fade tags on the far side of the globe
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    root.getWorldPosition(center);
+    markers.forEach((m) => {
+      const t = (time * 0.8 + m.phase) % 1;
+      m.pulse.scale.setScalar(1 + t * 2.2);
+      m.pulse.material.opacity = 1 - t;
+
+      m.pin.getWorldPosition(tmp);
+      normal.copy(tmp).sub(center).normalize();
+      toCam.copy(camera.position).sub(tmp).normalize();
+      const facing = normal.dot(toCam);
+      const vis = THREE.MathUtils.smoothstep(facing, 0.05, 0.35) * state.markersIn * (1 - state.scatter);
+      tmp.project(camera);
+      const sx = (tmp.x * 0.5 + 0.5) * w;
+      const sy = (-tmp.y * 0.5 + 0.5) * h;
+      m.tag.style.opacity = vis.toFixed(3);
+      m.tag.style.transform = `translate3d(${sx}px, ${sy}px, 0) translate(-50%, -135%) scale(${(0.6 + 0.4 * vis).toFixed(3)})`;
     });
 
     renderer.render(scene, camera);
   });
 
-  return { camera, state, setActive: (v) => { active = v; } };
+  return {
+    camera,
+    state,
+    isBusy: () => dragging || overGlobe,
+    setActive: (v) => { active = v; },
+  };
 }
 
 // ---------- Hero hover: letters scatter away from the cursor, learning icons pop out ----------
@@ -262,7 +483,7 @@ const HERO_ICON_COLORS = [
   ["#1fb57a", "#fff"], ["#e9407a", "#fff"], ["#ffc44d", "#111"],
 ];
 
-function initHeroHover(chars) {
+function initHeroHover(chars, isBusy) {
   const hero = document.querySelector(".hero");
   const layer = document.createElement("div");
   layer.className = "hero__icons";
@@ -305,6 +526,8 @@ function initHeroHover(chars) {
 
   hero.addEventListener("mousemove", (e) => {
     if (!enabled || window.scrollY > 10) return;
+    // Leave the letters alone while the globe is being hovered or dragged
+    if (isBusy && isBusy()) { reset(); return; }
     scattered = true;
     movers.forEach((m) => {
       const r = m.el.getBoundingClientRect();
@@ -346,7 +569,7 @@ if (animate) {
   if (typeof THREE !== "undefined") {
     try { hero3d = initHero3D(); } catch (err) { console.warn("WebGL hero disabled:", err); }
   }
-  const heroHover = finePointer ? initHeroHover(heroChars) : null;
+  const heroHover = finePointer ? initHeroHover(heroChars, hero3d && hero3d.isBusy) : null;
 
   const intro = gsap.timeline()
     .to(counter, {
@@ -364,10 +587,10 @@ if (animate) {
     });
   if (hero3d) {
     intro.to(hero3d.state, { intro: 1, duration: 1.6, ease: "elastic.out(1, 0.5)" }, 2.4);
-    intro.to(hero3d.state, { shapesIn: 1, duration: 1.2, ease: "back.out(2)" }, 2.6);
+    intro.to(hero3d.state, { markersIn: 1, duration: 1.2, ease: "power2.out" }, 3);
   }
 
-  // Hero scroll: pinned while letters fly apart in 3D and the blob swallows the screen
+  // Hero scroll: pinned while letters fly apart in 3D and the camera dives into the globe
   const heroScroll = gsap.timeline({
     defaults: { ease: "none", immediateRender: false },
     scrollTrigger: { trigger: ".hero", start: "top top", end: "+=140%", scrub: 1, pin: true },
@@ -389,9 +612,10 @@ if (animate) {
   if (hero3d) {
     const { camera, state } = hero3d;
     heroScroll
-      .fromTo(state, { scatter: 0, center: 0, wobble: 0.18 }, { scatter: 1, center: 1, wobble: 0.32, duration: 0.7 }, 0)
+      .fromTo(state, { scatter: 0, center: 0 }, { scatter: 1, center: 1, duration: 0.6 }, 0)
       .fromTo(camera.position, { z: 9 }, { z: 6, duration: 1 }, 0)
-      .fromTo(state, { size: 1 }, { size: 4.5, duration: 0.6 }, 0.4);
+      .fromTo(state, { size: 1 }, { size: 3.4, duration: 0.6 }, 0.35)
+      .fromTo("#heroCanvas", { opacity: 1 }, { opacity: 0, duration: 0.25 }, 0.75);
 
     // Stop rendering once the hero is fully scrolled past
     ScrollTrigger.create({
@@ -546,7 +770,10 @@ if (animate && finePointer) {
     el.addEventListener("mouseleave", () => ring.classList.remove("is-hover"));
   });
   document.querySelectorAll('[data-cursor="view"]').forEach((el) => {
-    el.addEventListener("mouseenter", () => ring.classList.add("is-view"));
+    el.addEventListener("mouseenter", () => {
+      ring.querySelector("span").textContent = "View";
+      ring.classList.add("is-view");
+    });
     el.addEventListener("mouseleave", () => ring.classList.remove("is-view"));
   });
 
