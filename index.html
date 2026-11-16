@@ -11,6 +11,16 @@
 </head>
 <body>
 
+  <!-- Preloader -->
+  <div class="preloader" id="preloader">
+    <span class="preloader__count" id="preloaderCount">0</span>
+    <span class="preloader__label">learn<span>lab</span></span>
+  </div>
+
+  <!-- Custom cursor -->
+  <div class="cursor" aria-hidden="true"></div>
+  <div class="cursor-ring" aria-hidden="true"><span>View</span></div>
+
   <!-- Header -->
   <header class="header" id="top">
     <div class="container header__inner">
@@ -22,7 +32,7 @@
         <a href="#pricing">Pricing</a>
         <a href="#reviews">Reviews</a>
       </nav>
-      <a href="#pricing" class="btn btn--dark header__cta">Enroll Now</a>
+      <a href="#pricing" class="btn btn--dark header__cta magnetic">Enroll Now</a>
       <button class="menu-toggle" id="menuToggle" aria-label="Menu" aria-expanded="false">
         <span></span><span></span>
       </button>
@@ -32,25 +42,25 @@
   <!-- Hero -->
   <section class="hero">
     <div class="container">
-      <h1 class="hero__title">
-        <span class="line"><span>Learn skills</span></span>
-        <span class="line"><span>that <em>actually</em> ship</span></span>
+      <h1 class="hero__title" data-split>
+        <span class="line">Learn skills</span>
+        <span class="line">that <em>actually</em> ship</span>
       </h1>
       <div class="hero__bottom">
-        <p class="hero__sub reveal">Pick a plan, join the cohort, and your learning journey starts tomorrow. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
-        <div class="hero__actions reveal">
-          <a href="#pricing" class="btn btn--accent">See Plans</a>
-          <a href="#pricing" class="btn btn--outline">Free Preview</a>
-          <button class="play" id="playBtn" aria-label="Play video">
+        <p class="hero__sub hero-fade">Pick a plan, join the cohort, and your learning journey starts tomorrow. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+        <div class="hero__actions hero-fade">
+          <a href="#pricing" class="btn btn--accent magnetic">See Plans</a>
+          <a href="#pricing" class="btn btn--outline magnetic">Free Preview</a>
+          <button class="play magnetic" id="playBtn" aria-label="Play video">
             <span class="play__icon">&#9654;</span>
             <span>Play trailer</span>
           </button>
         </div>
       </div>
-      <div class="hero__visual reveal">
-        <div class="hero__card hero__card--1"></div>
-        <div class="hero__card hero__card--2"></div>
-        <div class="hero__card hero__card--3"></div>
+      <div class="hero__visual hero-fade">
+        <div class="hero__card hero__card--1" data-speed="0.6"></div>
+        <div class="hero__card hero__card--2" data-speed="1.4"></div>
+        <div class="hero__card hero__card--3" data-speed="2.2"></div>
       </div>
     </div>
   </section>
@@ -66,9 +76,9 @@
   <!-- Why -->
   <section class="section why">
     <div class="container why__grid">
-      <div>
-        <h2 class="section__title reveal">We build skills for your next career move</h2>
-        <div class="why__reel reveal"><div class="why__reel-inner">Course Reel</div></div>
+      <div class="why__left">
+        <h2 class="section__title" data-split>We build skills for your next career move</h2>
+        <div class="why__reel"><div class="why__reel-inner">Course Reel</div></div>
       </div>
       <ul class="why__list">
         <li class="reveal"><span class="num">01</span><div><h3>Fast-track learning</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p></div></li>
@@ -83,7 +93,7 @@
   <section class="section about" id="about">
     <div class="container">
       <span class="eyebrow reveal">About Us</span>
-      <p class="about__lead reveal">We are your learning partner &mdash; a cohort-based academy helping curious people turn ideas into real, portfolio-ready work. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
+      <p class="about__lead" data-words>We are your learning partner &mdash; a cohort-based academy helping curious people turn ideas into real, portfolio-ready work. Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>
       <div class="about__grid">
         <div class="about__block reveal">
           <h3>Our philosophy</h3>
@@ -98,43 +108,43 @@
     </div>
   </section>
 
-  <!-- Modules -->
-  <section class="section works" id="modules">
-    <div class="container">
-      <div class="section__head">
-        <h2 class="section__title reveal">Course Modules</h2>
-        <span class="eyebrow reveal">2024 &mdash; 2026</span>
+  <!-- Modules (horizontal scroll) -->
+  <section class="works" id="modules">
+    <div class="works__pin">
+      <div class="container section__head">
+        <h2 class="section__title" data-split>Course Modules</h2>
+        <span class="eyebrow">2024 &mdash; 2026</span>
       </div>
-      <div class="works__grid">
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#ff6b3d;--c2:#ffc44d"></div><div class="work__meta"><h3>Module One</h3><span>Foundations &rarr;</span></div></a>
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#5b5bf7;--c2:#9b8cff"></div><div class="work__meta"><h3>Module Two</h3><span>Visual Design &rarr;</span></div></a>
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#1fb57a;--c2:#9be15d"></div><div class="work__meta"><h3>Module Three</h3><span>Prototyping &rarr;</span></div></a>
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#e9407a;--c2:#ff9a8b"></div><div class="work__meta"><h3>Module Four</h3><span>Motion &rarr;</span></div></a>
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#1c92d2;--c2:#7de2fc"></div><div class="work__meta"><h3>Module Five</h3><span>Development &rarr;</span></div></a>
-        <a href="#" class="work reveal"><div class="work__img" style="--c1:#222;--c2:#666"></div><div class="work__meta"><h3>Module Six</h3><span>Capstone &rarr;</span></div></a>
+      <div class="works__track">
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#ff6b3d;--c2:#ffc44d"></div></div><div class="work__meta"><h3>Module One</h3><span>Foundations &rarr;</span></div></a>
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#5b5bf7;--c2:#9b8cff"></div></div><div class="work__meta"><h3>Module Two</h3><span>Visual Design &rarr;</span></div></a>
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#1fb57a;--c2:#9be15d"></div></div><div class="work__meta"><h3>Module Three</h3><span>Prototyping &rarr;</span></div></a>
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#e9407a;--c2:#ff9a8b"></div></div><div class="work__meta"><h3>Module Four</h3><span>Motion &rarr;</span></div></a>
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#1c92d2;--c2:#7de2fc"></div></div><div class="work__meta"><h3>Module Five</h3><span>Development &rarr;</span></div></a>
+        <a href="#" class="work" data-cursor="view"><div class="work__img"><div class="work__fill" style="--c1:#222;--c2:#666"></div></div><div class="work__meta"><h3>Module Six</h3><span>Capstone &rarr;</span></div></a>
       </div>
     </div>
   </section>
 
-  <!-- Curriculum -->
+  <!-- Curriculum (stacking cards) -->
   <section class="section services" id="curriculum">
     <div class="container">
-      <h2 class="section__title reveal">What you'll learn</h2>
-      <div class="services__grid">
-        <div class="service reveal">
-          <h3>Design &amp; Branding</h3>
+      <h2 class="section__title" data-split>What you'll learn</h2>
+      <div class="services__stack">
+        <div class="service" style="--bg:#ffffff">
+          <div class="service__head"><span class="num">01</span><h3>Design &amp; Branding</h3></div>
           <ul class="checks">
             <li>Logo design</li><li>Brand guidelines</li><li>Typography</li><li>Color systems</li><li>Pitch decks</li><li>Iconography</li><li>Social media kits</li><li>Print design</li>
           </ul>
         </div>
-        <div class="service reveal">
-          <h3>Illustration &amp; Motion</h3>
+        <div class="service service--dark" style="--bg:#111111">
+          <div class="service__head"><span class="num">02</span><h3>Illustration &amp; Motion</h3></div>
           <ul class="checks">
             <li>2D illustration</li><li>Character design</li><li>Mascots</li><li>Isometric art</li><li>Logo animation</li><li>2D animation</li>
           </ul>
         </div>
-        <div class="service reveal">
-          <h3>UI/UX &amp; Web</h3>
+        <div class="service service--accent" style="--bg:#ff5b2e">
+          <div class="service__head"><span class="num">03</span><h3>UI/UX &amp; Web</h3></div>
           <ul class="checks">
             <li>Mobile app design</li><li>Website design</li><li>Dashboards</li><li>Design systems</li><li>UX research</li><li>Prototyping</li><li>Web development</li>
           </ul>
@@ -147,7 +157,7 @@
   <section class="section pricing" id="pricing">
     <div class="container">
       <div class="section__head">
-        <h2 class="section__title reveal">How it works</h2>
+        <h2 class="section__title" data-split>How it works</h2>
         <div class="tabs reveal" role="tablist">
           <button class="tab is-active" data-tab="once" role="tab">One-time</button>
           <button class="tab" data-tab="monthly" role="tab">Subscription</button>
@@ -204,7 +214,8 @@
   <!-- Process -->
   <section class="section process">
     <div class="container">
-      <h2 class="section__title reveal">The Process</h2>
+      <h2 class="section__title" data-split>The Process</h2>
+      <div class="process__line"><span></span></div>
       <div class="process__grid">
         <div class="step reveal"><span class="num">01</span><h3>Enroll</h3><p>Choose a plan and get instant access to your dashboard.</p></div>
         <div class="step reveal"><span class="num">02</span><h3>Learn</h3><p>Follow bite-sized lessons and join weekly live sessions.</p></div>
@@ -214,10 +225,16 @@
     </div>
   </section>
 
+  <!-- Big scrolling text -->
+  <section class="bigtext" aria-hidden="true">
+    <div class="bigtext__row bigtext__row--1">Learn &bull; Build &bull; Ship &bull; Learn &bull; Build &bull; Ship &bull;</div>
+    <div class="bigtext__row bigtext__row--2">Create &bull; Grow &bull; Repeat &bull; Create &bull; Grow &bull; Repeat &bull;</div>
+  </section>
+
   <!-- Reviews -->
   <section class="section reviews" id="reviews">
     <div class="container">
-      <h2 class="section__title reveal">Student Reviews</h2>
+      <h2 class="section__title" data-split>Student Reviews</h2>
       <div class="reviews__grid">
         <figure class="review reveal">
           <blockquote>"Lorem ipsum dolor sit amet, consectetur adipiscing elit. The course completely changed how I approach design."</blockquote>
@@ -236,7 +253,7 @@
         </figure>
       </div>
     </div>
-    <div class="marquee marquee--logos">
+    <div class="marquee marquee--logos" data-reverse>
       <div class="marquee__track">
         <span>Acme</span><span>Globex</span><span>Initech</span><span>Umbrella</span><span>Hooli</span><span>Stark</span><span>Wayne</span>
         <span>Acme</span><span>Globex</span><span>Initech</span><span>Umbrella</span><span>Hooli</span><span>Stark</span><span>Wayne</span>
@@ -247,9 +264,9 @@
   <!-- CTA -->
   <section class="cta">
     <div class="container">
-      <h2 class="cta__title reveal">Learn skills that <em>actually</em> ship</h2>
+      <h2 class="cta__title">Learn skills that <em>actually</em> ship</h2>
       <p class="reveal">Pick a plan, join the cohort, and start tomorrow.</p>
-      <a href="#pricing" class="btn btn--accent reveal">Explore Plans</a>
+      <a href="#pricing" class="btn btn--accent btn--big magnetic reveal">Explore Plans</a>
     </div>
   </section>
 
@@ -270,6 +287,7 @@
         <div class="footer__col"><h4>Legal</h4><a href="#">Privacy Policy</a><a href="#">Terms &amp; Conditions</a></div>
         <div class="footer__col"><h4>Social</h4><a href="#">Dribbble</a><a href="#">Behance</a><a href="#">Instagram</a></div>
       </div>
+      <div class="footer__big">learn<span>lab</span></div>
       <div class="footer__bottom">
         <span>&copy; 2026 LearnLab. All rights reserved.</span>
         <a href="#top">Back to Top &uarr;</a>
@@ -289,7 +307,7 @@
   <!-- Enroll form modal -->
   <div class="modal" id="formModal" aria-hidden="true">
     <div class="modal__backdrop" data-close></div>
-    <div class="modal__box">
+    <div class="modal__box" data-lenis-prevent>
       <button class="modal__close" data-close aria-label="Close">&times;</button>
       <h3>Enroll / Inquiry</h3>
       <form class="enroll" id="enrollForm">
@@ -317,6 +335,9 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
